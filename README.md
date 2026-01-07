@@ -6,6 +6,8 @@ This can be useful when you're supporting multiple versions of your product.
 After fixing a bug, you may want to apply that patch to the other versions.
 The manual labor of cherry-picking the individual commits can be automated using this action.
 
+> **Note**: This is a fork of [korthout/backport-action](https://github.com/korthout/backport-action) with enhanced support for creating backport pull requests to public repositories you don't own. See [Downstream Repository Support](#downstream-repository-support) for details.
+
 ## Features
 
 - Works out of the box - No configuration required / Defaults for everything
@@ -50,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create backport pull requests
-        uses: korthout/backport-action@v4
+        uses: kosarko/backport-action@v4
 ```
 
 > **Note**
@@ -97,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create backport pull requests
-        uses: korthout/backport-action@v4
+        uses: kosarko/backport-action@v4
 ```
 
 </p>
@@ -125,7 +127,7 @@ Below is a GPG example (pin the third‑party action by commit for supply‑chai
     git_user_signingkey: true
     git_commit_gpgsign: true
 - name: Create backport pull requests
-  uses: korthout/backport-action@v4
+  uses: kosarko/backport-action@v4
   with:
     git_committer_name: ${{ steps.import-gpg.outputs.name }}
     git_committer_email: ${{ steps.import-gpg.outputs.email }}
@@ -293,6 +295,35 @@ By default, the action always backports to the repository in which the workflow 
 
 Define if you want to backport to another owner than the owner of the repository the workflow runs on.
 Only takes effect if the `downstream_repo` property is also defined.
+
+By default, uses the owner of the repository in which the workflow runs.
+
+## Downstream Repository Support
+
+**This fork includes enhanced support for backporting to public repositories you don't own.**
+
+When using `experimental.downstream_repo` and `experimental.downstream_owner`, the action will:
+1. Fetch and checkout from the downstream repository
+2. Cherry-pick the commits
+3. Push the backport branch to **your fork** (origin)
+4. Create a pull request from `your-fork:branch` to `downstream-repo:target-branch`
+
+This allows you to automatically create backport pull requests to upstream repositories without requiring write access.
+
+### Example Configuration
+
+```yaml
+- name: Create backport pull requests
+  uses: kosarko/backport-action@v4
+  with:
+    experimental: |
+      {
+        "downstream_repo": "upstream-repo-name",
+        "downstream_owner": "upstream-owner"
+      }
+```
+
+This configuration will create backport PRs from your fork to the specified upstream repository.
 
 By default, uses the owner of the repository in which the workflow runs.
 
