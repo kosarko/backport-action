@@ -127,7 +127,15 @@ class Backport {
             if (this.config.commits.cherry_picking === "auto") {
                 const merge_commit_sha = await this.github.getMergeCommitSha(mainpr);
                 // switch case to check if it is a squash, rebase, or merge commit
-                switch (await this.github.mergeStrategy(mainpr, merge_commit_sha)) {
+                let detectedStrategy;
+                try {
+                    detectedStrategy = await this.github.mergeStrategy(mainpr, merge_commit_sha);
+                }
+                catch (error) {
+                    console.error(`Error detecting merge strategy: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+                    detectedStrategy = github_1.MergeStrategy.UNKNOWN;
+                }
+                switch (detectedStrategy) {
                     case github_1.MergeStrategy.SQUASHED:
                         // If merged via a squash merge_commit_sha represents the SHA of the squashed commit on
                         // the base branch. We must fetch it and its parent in case of a shallowly cloned repo
@@ -509,10 +517,11 @@ class Backport {
                   ${suggestion}`;
     }
     composeSuggestion(target, branchname, commitShasToCherryPick, branchExist, confictResolution = "fail") {
+        const remote = this.getRemote();
         if (branchExist) {
             if (confictResolution === "draft_commit_conflicts") {
                 return (0, dedent_1.default) `\`\`\`bash
-        git fetch origin ${branchname}
+        git fetch ${remote} ${branchname}
         git worktree add --checkout .worktree/${branchname} ${branchname}
         cd .worktree/${branchname}
         git reset --hard HEAD^
@@ -526,8 +535,8 @@ class Backport {
         }
         else {
             return (0, dedent_1.default) `\`\`\`bash
-      git fetch origin ${target}
-      git worktree add -d .worktree/${branchname} origin/${target}
+      git fetch ${remote} ${target}
+      git worktree add -d .worktree/${branchname} ${remote}/${target}
       cd .worktree/${branchname}
       git switch --create ${branchname}
       git cherry-pick -x ${commitShasToCherryPick.join(" ")}
@@ -1100,6 +1109,7 @@ class Github {
         const first_parent_sha = parents[0].sha;
         const first_parent_belonts_to_pr = await this.isShaAssociatedWithPullRequest(first_parent_sha, pull);
         const merge_belongs_to_pr = await this.isShaAssociatedWithPullRequest(merge_commit_sha, pull);
+        console.log(`Merge strategy detection: first_parent_belongs_to_pr=${first_parent_belonts_to_pr}, merge_belongs_to_pr=${merge_belongs_to_pr}`);
         // This is the case when the PR is merged using a rebase.
         // and has multiple commits.
         if (await this.isRebased(first_parent_belonts_to_pr, merge_belongs_to_pr, pull)) {
@@ -1110,6 +1120,7 @@ class Github {
             console.log("PR was merged using a squash");
             return MergeStrategy.SQUASHED;
         }
+        console.log("Could not determine merge strategy from commit associations");
         return MergeStrategy.UNKNOWN;
     }
 }

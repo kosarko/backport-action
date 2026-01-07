@@ -39,7 +39,7 @@ export interface GithubApi {
   mergeStrategy(
     pull: PullRequest,
     merge_commit_sha: string | null,
-  ): Promise<string | null>;
+  ): Promise<MergeStrategy>;
   getMergeCommitSha(pull: PullRequest): Promise<string | null>;
 }
 
@@ -367,6 +367,10 @@ export class Github implements GithubApi {
       pull,
     );
 
+    console.log(
+      `Merge strategy detection: first_parent_belongs_to_pr=${first_parent_belonts_to_pr}, merge_belongs_to_pr=${merge_belongs_to_pr}`,
+    );
+
     // This is the case when the PR is merged using a rebase.
     // and has multiple commits.
     if (
@@ -387,6 +391,7 @@ export class Github implements GithubApi {
       return MergeStrategy.SQUASHED;
     }
 
+    console.log("Could not determine merge strategy from commit associations");
     return MergeStrategy.UNKNOWN;
   }
 }

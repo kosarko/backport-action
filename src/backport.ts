@@ -154,7 +154,20 @@ export class Backport {
         const merge_commit_sha = await this.github.getMergeCommitSha(mainpr);
 
         // switch case to check if it is a squash, rebase, or merge commit
-        switch (await this.github.mergeStrategy(mainpr, merge_commit_sha)) {
+        let detectedStrategy: MergeStrategy;
+        try {
+          detectedStrategy = await this.github.mergeStrategy(
+            mainpr,
+            merge_commit_sha,
+          );
+        } catch (error) {
+          console.error(
+            `Error detecting merge strategy: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+          );
+          detectedStrategy = MergeStrategy.UNKNOWN;
+        }
+
+        switch (detectedStrategy) {
           case MergeStrategy.SQUASHED:
             // If merged via a squash merge_commit_sha represents the SHA of the squashed commit on
             // the base branch. We must fetch it and its parent in case of a shallowly cloned repo
@@ -704,10 +717,11 @@ export class Backport {
     branchExist: boolean,
     confictResolution: string = "fail",
   ) {
+    const remote = this.getRemote();
     if (branchExist) {
       if (confictResolution === "draft_commit_conflicts") {
         return dedent`\`\`\`bash
-        git fetch origin ${branchname}
+        git fetch ${remote} ${branchname}
         git worktree add --checkout .worktree/${branchname} ${branchname}
         cd .worktree/${branchname}
         git reset --hard HEAD^
@@ -719,8 +733,8 @@ export class Backport {
       }
     } else {
       return dedent`\`\`\`bash
-      git fetch origin ${target}
-      git worktree add -d .worktree/${branchname} origin/${target}
+      git fetch ${remote} ${target}
+      git worktree add -d .worktree/${branchname} ${remote}/${target}
       cd .worktree/${branchname}
       git switch --create ${branchname}
       git cherry-pick -x ${commitShasToCherryPick.join(" ")}
