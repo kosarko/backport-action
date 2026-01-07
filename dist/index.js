@@ -85,6 +85,9 @@ class Backport {
     getRemote() {
         return this.shouldUseDownstreamRepo() ? "downstream" : "origin";
     }
+    getPushRemote() {
+        return "origin";
+    }
     async run() {
         try {
             const payload = this.github.getPayload();
@@ -252,13 +255,13 @@ class Backport {
                         });
                         continue;
                     }
-                    console.info(`Push branch to ${this.getRemote()}`);
-                    const pushExitCode = await this.git.push(branchname, this.getRemote(), this.config.pwd);
+                    console.info(`Push branch to ${this.getPushRemote()}`);
+                    const pushExitCode = await this.git.push(branchname, this.getPushRemote(), this.config.pwd);
                     if (pushExitCode != 0) {
                         try {
                             // If the branch already exists, ignore the error and keep going.
                             console.info(`Branch ${branchname} may already exist, fetching it instead to recover previous run`);
-                            await this.git.fetch(branchname, this.config.pwd, 1, this.getRemote());
+                            await this.git.fetch(branchname, this.config.pwd, 1, this.getPushRemote());
                             console.info(`Previous branch successfully recovered, retrying PR creation`);
                             // note that the recovered branch is not guaranteed to be up-to-date
                         }
@@ -278,6 +281,9 @@ class Backport {
                     }
                     console.info(`Create PR for ${branchname}`);
                     const { title, body } = this.composePRContent(target, mainpr);
+                    const prHead = this.shouldUseDownstreamRepo()
+                        ? `${workflowOwner}:${branchname}`
+                        : branchname;
                     let new_pr_response;
                     try {
                         new_pr_response = await this.github.createPR({
@@ -285,7 +291,7 @@ class Backport {
                             repo,
                             title,
                             body,
-                            head: branchname,
+                            head: prHead,
                             base: target,
                             maintainer_can_modify: true,
                             draft: uncommitedShas !== null,

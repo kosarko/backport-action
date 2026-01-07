@@ -90,6 +90,10 @@ export class Backport {
     return this.shouldUseDownstreamRepo() ? "downstream" : "origin";
   }
 
+  getPushRemote(): "origin" {
+    return "origin";
+  }
+
   async run(): Promise<void> {
     try {
       const payload = this.github.getPayload();
@@ -339,10 +343,10 @@ export class Backport {
             continue;
           }
 
-          console.info(`Push branch to ${this.getRemote()}`);
+          console.info(`Push branch to ${this.getPushRemote()}`);
           const pushExitCode = await this.git.push(
             branchname,
-            this.getRemote(),
+            this.getPushRemote(),
             this.config.pwd,
           );
           if (pushExitCode != 0) {
@@ -355,7 +359,7 @@ export class Backport {
                 branchname,
                 this.config.pwd,
                 1,
-                this.getRemote(),
+                this.getPushRemote(),
               );
               console.info(
                 `Previous branch successfully recovered, retrying PR creation`,
@@ -381,6 +385,9 @@ export class Backport {
 
           console.info(`Create PR for ${branchname}`);
           const { title, body } = this.composePRContent(target, mainpr);
+          const prHead = this.shouldUseDownstreamRepo()
+            ? `${workflowOwner}:${branchname}`
+            : branchname;
           let new_pr_response: CreatePullRequestResponse;
           try {
             new_pr_response = await this.github.createPR({
@@ -388,7 +395,7 @@ export class Backport {
               repo,
               title,
               body,
-              head: branchname,
+              head: prHead,
               base: target,
               maintainer_can_modify: true,
               draft: uncommitedShas !== null,
