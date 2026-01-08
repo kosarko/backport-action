@@ -428,7 +428,15 @@ export class Backport {
 
             console.error(JSON.stringify(error.response?.data));
             successByTarget.set(target, false);
-            const message = this.composeMessageForCreatePRFailed(error);
+            const message = this.composeMessageForCreatePRFailed(
+              error,
+              owner,
+              repo,
+              title,
+              body,
+              prHead,
+              target,
+            );
             await this.github.createComment({
               owner: workflowOwner,
               repo: workflowRepo,
@@ -750,11 +758,33 @@ export class Backport {
     return dedent`Git push to origin failed for ${target} with exitcode ${exitcode}`;
   }
 
-  private composeMessageForCreatePRFailed(error: RequestError): string {
+  private composeMessageForCreatePRFailed(
+    error: RequestError,
+    owner: string,
+    repo: string,
+    title: string,
+    body: string,
+    head: string,
+    base: string,
+  ): string {
+    const encodedTitle = encodeURIComponent(title);
+    const encodedBody = encodeURIComponent(body);
+    const createPRUrl = `https://github.com/${owner}/${repo}/compare/${base}...${head}?expand=1&title=${encodedTitle}&body=${encodedBody}`;
+
+    const ghCliCommand = `gh pr create --repo ${owner}/${repo} --base ${base} --head ${head} --title "${title.replace(/"/g, '\\"')}" --body "${body.replace(/"/g, '\\"')}"`;
+
     return dedent`Backport branch created but failed to create PR.
                 Request to create PR rejected with status ${error.status}.
 
-                (see action log for full response)`;
+                Please create the PR manually:
+                - [Create PR via GitHub UI](${createPRUrl})
+                
+                Or via GitHub CLI:
+                \`\`\`bash
+                ${ghCliCommand}
+                \`\`\`
+
+                (see action log for full error response)`;
   }
 
   private composeMessageForSuccess(
