@@ -81,6 +81,11 @@ describe("formatSingleTargetComment", () => {
     expect(out).toContain("git fetch downstream main");
     expect(out).toContain("downstream/main");
     expect(out).not.toContain("origin/main");
+    // Branch is created and checked out in a single worktree step.
+    expect(out).toContain(
+      "git worktree add -b backport-42-to-main .worktree/backport-42-to-main downstream/main",
+    );
+    expect(out).not.toContain("git switch --create");
   });
 
   it("defaults the target remote to origin", () => {

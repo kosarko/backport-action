@@ -4,12 +4,17 @@ import { PullRequest } from "./github.js";
  * @param template The template potentially containing placeholders
  * @param main The main pull request that is backported
  * @param target The target branchname
+ * @param sourceRepo `owner/repo` of the repository the source pull request
+ *   lives in. Used by the `${source_repo}` placeholder so cross-fork backport
+ *   PRs can reference the source PR with a fully-qualified `owner/repo#number`
+ *   (a bare `#number` would resolve against the downstream repo instead).
  * @returns Description that can be used in the backport pull request
  */
 export function replacePlaceholders(
   template: string,
   main: Pick<PullRequest, "body" | "user" | "number" | "title">,
   target: string,
+  sourceRepo: string = "",
 ): string {
   const issues = getMentionedIssueRefs(main.body);
   return template
@@ -18,6 +23,7 @@ export function replacePlaceholders(
     .replace("${pull_title}", main.title)
     .replace("${pull_description}", main.body ?? "")
     .replace("${target_branch}", target)
+    .replace("${source_repo}", sourceRepo)
     .replace("${issue_refs}", issues.join(" "));
 }
 

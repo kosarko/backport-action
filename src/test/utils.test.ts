@@ -245,6 +245,20 @@ describe("compose body/title", () => {
         "Backport of pull made by @foo-author",
       );
     });
+
+    it("for a template with source_repo placeholder", () => {
+      const template = "Backport of ${source_repo}#${pull_number}";
+      expect(
+        replacePlaceholders(template, main_default, target, "octo/upstream"),
+      ).toEqual("Backport of octo/upstream#123");
+    });
+
+    it("renders source_repo as empty when not provided", () => {
+      const template = "Backport of ${source_repo}#${pull_number}";
+      expect(replacePlaceholders(template, main_default, target)).toEqual(
+        "Backport of #123",
+      );
+    });
   });
 });
 

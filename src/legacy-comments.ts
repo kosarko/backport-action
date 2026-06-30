@@ -202,9 +202,8 @@ function composeSuggestion(
   } else {
     return dedent`\`\`\`bash
     git fetch ${targetRemote} ${target}
-    git worktree add -d .worktree/${branchname} ${targetRemote}/${target}
+    git worktree add -b ${branchname} .worktree/${branchname} ${targetRemote}/${target}
     cd .worktree/${branchname}
-    git switch --create ${branchname}
     git cherry-pick -x ${commitShasToCherryPick.join(" ")}
     \`\`\``;
   }

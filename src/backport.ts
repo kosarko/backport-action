@@ -486,7 +486,11 @@ export class Backport {
       }
 
       console.info(`Create PR for ${branchname}`);
-      const { title, body } = this.composePRContent(targetBranch, mainpr);
+      const { title, body } = this.composePRContent(
+        targetBranch,
+        mainpr,
+        `${context.workflowOwner}/${context.workflowRepo}`,
+      );
       // For a downstream backport the branch lives on our fork (origin), so the
       // PR head must be qualified with the fork owner: `owner:branch`.
       const prHead = this.shouldUseDownstreamRepo()
@@ -659,16 +663,22 @@ export class Backport {
     });
   }
 
-  private composePRContent(target: string, main: PullRequest): PRContent {
+  private composePRContent(
+    target: string,
+    main: PullRequest,
+    sourceRepo: string,
+  ): PRContent {
     const title = utils.replacePlaceholders(
       this.config.pull.title,
       main,
       target,
+      sourceRepo,
     );
     const body = utils.replacePlaceholders(
       this.config.pull.description,
       main,
       target,
+      sourceRepo,
     );
     return { title, body };
   }

@@ -550,6 +550,7 @@ Placeholder | Replaced with
 `pull_description`| The description (i.e. body) of the original pull request that is backported, e.g. `Summary: This patch was created to..`
 `pull_number` | The number of the original pull request that is backported, e.g. `123`
 `pull_title` | The title of the original pull request that is backported, e.g. `fix: some error`
+`source_repo` | The `owner/repo` of the repository the original pull request lives in, e.g. `kosarko/backport-action`. Useful for cross-fork (downstream) backports, where a bare `#${pull_number}` would otherwise resolve against the downstream repo — write `${source_repo}#${pull_number}` to link back to the source PR.
 `target_branch`| The branchname to which the pull request is backported, e.g. `release-0.23`
 
 ## Outputs

@@ -179,9 +179,8 @@ export function formatSingleTargetComment(
              Please cherry-pick the changes locally:
              \`\`\`bash
              git fetch ${targetRemote} ${targetBranch}
-             git worktree add -d .worktree/${error.branch} ${targetRemote}/${targetBranch}
+             git worktree add -b ${error.branch} .worktree/${error.branch} ${targetRemote}/${targetBranch}
              cd .worktree/${error.branch}
-             git switch --create ${error.branch}
              git cherry-pick -x ${error.commits.join(" ")}
              \`\`\``,
     );
@@ -195,9 +194,8 @@ export function formatSingleTargetComment(
              Please cherry-pick the changes locally and resolve any conflicts:
              \`\`\`bash
              git fetch ${targetRemote} ${targetBranch}
-             git worktree add -d .worktree/${error.branch} ${targetRemote}/${targetBranch}
+             git worktree add -b ${error.branch} .worktree/${error.branch} ${targetRemote}/${targetBranch}
              cd .worktree/${error.branch}
-             git switch --create ${error.branch}
              git cherry-pick -x ${error.commits.join(" ")}
              \`\`\``,
     );
