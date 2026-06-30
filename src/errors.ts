@@ -1,0 +1,113 @@
+/**
+ * Typed error classes for per-target backport failures.
+ *
+ * Each subclass carries the structured data the comment formatter (Phase 8a)
+ * needs to render actionable recovery instructions for the user.
+ */
+
+export class BackportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackportError";
+  }
+}
+
+export class CheckoutError extends BackportError {
+  branch: string;
+  commits: string[];
+
+  constructor(message: string, branch: string, commits: string[]) {
+    super(message);
+    this.name = "CheckoutError";
+    this.branch = branch;
+    this.commits = commits;
+  }
+}
+
+export class CherryPickError extends BackportError {
+  branch: string;
+  commits: string[];
+
+  constructor(message: string, branch: string, commits: string[]) {
+    super(message);
+    this.name = "CherryPickError";
+    this.branch = branch;
+    this.commits = commits;
+  }
+}
+
+export class GitPushError extends BackportError {
+  branch: string;
+  remote: string;
+  exitCode: number;
+
+  constructor(
+    message: string,
+    branch: string,
+    remote: string,
+    exitCode: number,
+  ) {
+    super(message);
+    this.name = "GitPushError";
+    this.branch = branch;
+    this.remote = remote;
+    this.exitCode = exitCode;
+  }
+}
+
+export type CreatePRDetails = {
+  owner: string;
+  repo: string;
+  title: string;
+  body: string;
+  head: string;
+  base: string;
+};
+
+export class CreatePRError extends BackportError {
+  status: number;
+  responseMessage?: string;
+  details?: CreatePRDetails;
+
+  constructor(
+    message: string,
+    status: number,
+    responseMessage?: string,
+    details?: CreatePRDetails,
+  ) {
+    super(message);
+    this.name = "CreatePRError";
+    this.status = status;
+    this.responseMessage = responseMessage;
+    this.details = details;
+  }
+}
+
+/**
+ * Outcome of a single per-target backport attempt.
+ *
+ * Lives in errors.ts so both backport.ts (which produces the result) and
+ * comments.ts (which renders it) can import it without depending on each
+ * other.
+ */
+export type TargetResult =
+  | {
+      status: "success";
+      targetBranch: string;
+      newPrNumber: number;
+      branchname: string;
+    }
+  | {
+      status: "success_with_conflicts";
+      targetBranch: string;
+      newPrNumber: number;
+      branchname: string;
+      uncommittedShas: string[];
+    }
+  | { status: "skipped"; targetBranch: string; reason: string }
+  | {
+      status: "failed";
+      targetBranch: string;
+      error: BackportError | Error;
+      branchname?: string;
+    };

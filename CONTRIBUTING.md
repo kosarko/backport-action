@@ -47,11 +47,13 @@ Run all tests.
 npm test
 ```
 
-Run all tests with additional console output.
+Run all tests with verbose reporter output (individual test names).
 
 ```
 npm run test-verbose
 ```
+
+For guidance on writing tests — where to add them, which helpers to use, and testing conventions — see [TESTING.md](TESTING.md).
 
 Shorthand for format, build, package and test.
 
@@ -60,6 +62,22 @@ npm run all
 ```
 
 This action can also be tested using [kosarko/backport-action-test](https://github.com/kosarko/backport-action-test) (if available).
+
+### CI Design
+
+For details on why `dist/` is not committed in PRs and how the CI workflows interact, see [CI.md](CI.md).
+
+### Merging
+
+This repository uses [Mergify](https://mergify.com) to manage a merge queue.
+PRs are merged through the queue to ensure they are tested against the latest `main` branch before merging.
+
+To add a PR to the merge queue, comment `@mergifyio queue` on the PR.
+Renovate patch updates are automatically queued when CI passes.
+
+PRs should not include changes to `dist/` — it is rebuilt automatically after merge by the Publish workflow.
+It's fine to temporarily commit `dist/` for testing purposes, but those changes should be removed before merging.
+See [CI.md](CI.md) for details.
 
 ### Releases
 

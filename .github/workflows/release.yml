@@ -20,19 +20,32 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate version inputs
+        env:
+          RELEASE_VERSION: ${{ inputs.releaseVersion }}
+          NEXT_VERSION: ${{ inputs.nextDevelopmentVersion }}
+        run: |
+          for v in "$RELEASE_VERSION" "$NEXT_VERSION"; do
+            if ! echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+              printf '::error::Invalid semver: %s\n' "$v"
+              exit 1
+            fi
+          done
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ssh-key: ${{ secrets.PUBLISH_DEPLOY_KEY }}
 
       - name: Set release version in package.json
-        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e # v3
-        with:
-          find: '"version": "[0-9\.]+(-SNAPSHOT)?"'
-          replace: '"version": "${{ inputs.releaseVersion }}"'
-          include: package.json
-          regex: true
+        env:
+          RELEASE_VERSION: ${{ inputs.releaseVersion }}
+        run: |
+          sed -i "s/\"version\": \"[0-9.]*\(-SNAPSHOT\)\{0,1\}\"/\"version\": \"$RELEASE_VERSION\"/" package.json
+          grep -Fq "\"version\": \"$RELEASE_VERSION\"" package.json
 
       - name: Commit new release version
         id: commit-new-release
-        uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
+        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
         with:
           commit: --signoff
           default_author: github_actions
@@ -45,15 +58,15 @@ jobs:
         run: git show ${{ steps.commit-new-release.outputs.commit_sha }} | cat
 
       - name: Set development version in package.json
-        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e # v3
-        with:
-          find: '"version": "${{ inputs.releaseVersion }}"'
-          replace: '"version": "${{ inputs.nextDevelopmentVersion }}"'
-          include: "package.json"
-          regex: false
+        env:
+          RELEASE_VERSION: ${{ inputs.releaseVersion }}
+          NEXT_VERSION: ${{ inputs.nextDevelopmentVersion }}
+        run: |
+          sed -i "s/\"version\": \"$RELEASE_VERSION\"/\"version\": \"$NEXT_VERSION\"/" package.json
+          grep -Fq "\"version\": \"$NEXT_VERSION\"" package.json
 
       - name: Extract semver release version components
-        uses: madhead/semver-utils@36d1e0ed361bd7b4b77665de8093092eaeabe6ba # v4
+        uses: madhead/semver-utils@4cf918affe9106ea59f86c6250e5ec4570ac4389 # v5.0.0
         id: version
         with:
           version: ${{ inputs.releaseVersion }}
@@ -71,7 +84,7 @@ jobs:
 
       - name: Commit next development version
         id: commit-next-dev
-        uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
+        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
         with:
           commit: --signoff
           default_author: github_actions

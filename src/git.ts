@@ -1,22 +1,51 @@
 import { ExecOptions, getExecOutput } from "@actions/exec";
 
-export class GitRefNotFoundError extends Error {
+import { BackportError, GitPushError } from "./errors.js";
+
+export class GitRefNotFoundError extends BackportError {
   ref: string;
   constructor(message: string, ref: string) {
     super(message);
+    this.name = "GitRefNotFoundError";
     this.ref = ref;
   }
 }
 
-export class Git {
+export interface GitApi {
+  fetch(
+    ref: string,
+    pwd: string,
+    depth: number,
+    remote?: string,
+  ): Promise<void>;
+  remoteAdd(
+    pwd: string,
+    shortname: string,
+    owner: string | undefined,
+    repo: string | undefined,
+  ): Promise<void>;
+  findCommitsInRange(range: string, pwd: string): Promise<string[]>;
+  findMergeCommits(commitShas: string[], pwd: string): Promise<string[]>;
+  push(branchname: string, remote: string, pwd: string): Promise<void>;
+  checkout(branch: string, start: string, pwd: string): Promise<void>;
+  cherryPick(
+    commitShas: string[],
+    conflictResolution: string,
+    pwd: string,
+    mergeMode: "default" | "whitespace_tolerant",
+  ): Promise<string[] | null>;
+}
+
+export class Git implements GitApi {
   constructor(
     private gitCommitterName: string,
     private gitCommitterEmail: string,
+    private silent: boolean = false,
   ) {}
 
   private async git(command: string, args: string[], pwd: string) {
     const options: ExecOptions = {
-      silent: false,
+      silent: this.silent,
       cwd: pwd,
       env: {
         ...process.env,
@@ -135,7 +164,14 @@ export class Git {
       ["--set-upstream", remote, branchname],
       pwd,
     );
-    return exitCode;
+    if (exitCode !== 0) {
+      throw new GitPushError(
+        `'git push --set-upstream ${remote} ${branchname}' failed with exit code ${exitCode}`,
+        branchname,
+        remote,
+        exitCode,
+      );
+    }
   }
 
   public async checkout(branch: string, start: string, pwd: string) {
@@ -151,7 +187,11 @@ export class Git {
     commitShas: string[],
     conflictResolution: string,
     pwd: string,
+    mergeMode: "default" | "whitespace_tolerant",
   ): Promise<string[] | null> {
+    const strategyArgs =
+      mergeMode === "whitespace_tolerant" ? ["-Xignore-space-at-eol"] : [];
+
     const abortCherryPickAndThrow = async (
       commitShas: string[],
       exitCode: number,
@@ -165,7 +205,7 @@ export class Git {
     if (conflictResolution === `fail`) {
       const { exitCode } = await this.git(
         "cherry-pick",
-        ["-x", ...commitShas],
+        ["-x", ...strategyArgs, ...commitShas],
         pwd,
       );
 
@@ -181,7 +221,7 @@ export class Git {
       while (uncommittedShas.length > 0) {
         const { exitCode } = await this.git(
           "cherry-pick",
-          ["-x", uncommittedShas[0]],
+          ["-x", ...strategyArgs, uncommittedShas[0]],
           pwd,
         );
 

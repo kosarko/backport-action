@@ -14,7 +14,10 @@ export interface GithubApi {
   getRepo(): Repo;
   getPayload(): Payload;
   getPullNumber(): number;
-  createComment(comment: Comment): Promise<{}>;
+  getRunId(): string;
+  getRunUrl(): string;
+  createComment(comment: Comment): Promise<number>;
+  updateComment(comment_id: number, body: string): Promise<{}>;
   getPullRequest(pull_number: number): Promise<PullRequest>;
   isMerged(pull: PullRequest): Promise<boolean>;
   getCommits(pull: PullRequest): Promise<string[]>;
@@ -24,6 +27,11 @@ export interface GithubApi {
     labels: string[],
     repo: Repo,
   ): Promise<LabelPullRequestResponse>;
+  listReviews(
+    owner: string,
+    repo: string,
+    pull_number: number,
+  ): Promise<ListReviewsResponse>;
   requestReviewers(request: ReviewRequest): Promise<RequestReviewersResponse>;
   addAssignees(
     pr: number,
@@ -70,9 +78,32 @@ export class Github implements GithubApi {
     return this.#context.issue.number;
   }
 
-  public async createComment(comment: Comment) {
+  public getRunId(): string {
+    return process.env.GITHUB_RUN_ID ?? "";
+  }
+
+  public getRunUrl(): string {
+    const serverUrl = process.env.GITHUB_SERVER_URL ?? "https://github.com";
+    const repository = process.env.GITHUB_REPOSITORY ?? "";
+    const runId = this.getRunId();
+    return `${serverUrl}/${repository}/actions/runs/${runId}`;
+  }
+
+  public async createComment(comment: Comment): Promise<number> {
     console.log(`Create comment: ${comment.body}`);
-    return this.#octokit.rest.issues.createComment(comment);
+    const response = await this.#octokit.rest.issues.createComment(comment);
+    return response.data.id;
+  }
+
+  public async updateComment(comment_id: number, body: string) {
+    console.log(`Update comment ${comment_id}: ${body}`);
+    const { owner, repo } = this.getRepo();
+    return this.#octokit.rest.issues.updateComment({
+      owner,
+      repo,
+      comment_id,
+      body,
+    });
   }
 
   public async getPullRequest(pull_number: number) {
@@ -82,7 +113,7 @@ export class Github implements GithubApi {
         ...this.getRepo(),
         pull_number,
       })
-      .then((response) => response.data as PullRequest);
+      .then((response: { data: PullRequest }) => response.data as PullRequest);
   }
 
   public async isMerged(pull: PullRequest) {
@@ -90,7 +121,7 @@ export class Github implements GithubApi {
     return this.#octokit.rest.pulls
       .checkIfMerged({ ...this.getRepo(), pull_number: pull.number })
       .then(() => true /* status is always 204 */)
-      .catch((error) => {
+      .catch((error: { status?: number }) => {
         if (error?.status == 404) return false;
         else throw error;
       });
@@ -119,7 +150,9 @@ export class Github implements GithubApi {
           per_page: 100,
           page: page,
         })
-        .then((commits) => commits.data.map((commit) => commit.sha));
+        .then((response: { data: { sha: string }[] }) =>
+          response.data.map((commit) => commit.sha),
+        );
 
     for (let page = 1; page <= Math.ceil(pull.commits / 100); page++) {
       const commitsOnPage = await getCommitsPaged(page);
@@ -132,6 +165,24 @@ export class Github implements GithubApi {
   public async createPR(pr: CreatePullRequest) {
     console.log(`Create PR: ${pr.body}`);
     return this.#octokit.rest.pulls.create(pr);
+  }
+
+  /**
+   * Retrieves a list of reviews for a specific pull request.
+
+   * @param owner - The account owner of the repository.
+   * @param repo - The name of the repository.
+   * @param pull_number - The unique identifier of the pull request.
+   * @returns A promise that resolves to the list of reviews from the GitHub API.
+   * @throws Will throw an error if the Octokit request fails (e.g., 404 Not Found).
+   */
+  public async listReviews(owner: string, repo: string, pull_number: number) {
+    console.log(`Retrieving reviews from pull request: ${pull_number}`);
+    return this.#octokit.rest.pulls.listReviews({
+      owner,
+      repo,
+      pull_number,
+    });
   }
 
   public async requestReviewers(request: ReviewRequest) {
@@ -285,7 +336,9 @@ export class Github implements GithubApi {
     const assoc_pr_data = assoc_pr.data;
     // commits can be associated with multiple PRs
     // checks if any of the assoc_prs is the same as the pull
-    return assoc_pr_data.some((pr) => pr.number == pull.number);
+    return assoc_pr_data.some(
+      (pr: { number: number }) => pr.number == pull.number,
+    );
   }
 
   /**
@@ -426,22 +479,26 @@ export type PullRequest = {
   labels: {
     name: string;
   }[];
-  requested_reviewers: {
-    login: string;
-  }[];
+  requested_reviewers?:
+    | {
+        login: string;
+      }[]
+    | null;
   commits: number;
   milestone: {
     number: number;
     id: number;
     title: string;
-  };
-  assignees: {
-    login: string;
-    id: number;
-  }[];
+  } | null;
+  assignees?:
+    | {
+        login: string;
+        id: number;
+      }[]
+    | null;
   merged_by: {
     login: string;
-  };
+  } | null;
 };
 export type CreatePullRequestResponse = {
   status: number;
@@ -451,6 +508,17 @@ export type CreatePullRequestResponse = {
   };
 };
 export type RequestReviewersResponse = CreatePullRequestResponse;
+
+export type PullRequestReview = {
+  user: {
+    login: string;
+  } | null;
+};
+
+export type ListReviewsResponse = {
+  status: number;
+  data: PullRequestReview[];
+};
 
 export type GenericResponse = {
   status: number;
@@ -483,6 +551,7 @@ export type ReviewRequest = {
   repo: string;
   pull_number: number;
   reviewers: string[];
+  team_reviewers?: string[];
 };
 
 type Payload = {

@@ -4,9 +4,10 @@ import {
   Config,
   experimentalDefaults,
   deprecatedExperimental,
-} from "./backport";
-import { Github } from "./github";
-import { Git } from "./git";
+} from "./backport.js";
+import { Github } from "./github.js";
+import { Git } from "./git.js";
+import { coerceCherryPickingMergeMode } from "./utils.js";
 import dedent from "dedent";
 
 /**
@@ -27,18 +28,34 @@ async function run(): Promise<void> {
   const copy_labels_pattern = core.getInput("copy_labels_pattern");
   const target_branches = core.getInput("target_branches");
   const cherry_picking = core.getInput("cherry_picking");
+  const cherry_picking_merge_mode = core.getInput("cherry_picking_merge_mode");
   const merge_commits = core.getInput("merge_commits");
   const copy_assignees = core.getInput("copy_assignees");
   const copy_milestone = core.getInput("copy_milestone");
+  const copy_all_reviewers = core.getInput("copy_all_reviewers");
   const copy_requested_reviewers = core.getInput("copy_requested_reviewers");
   const add_author_as_assignee = core.getInput("add_author_as_assignee");
+  const add_author_as_reviewer = core.getInput("add_author_as_reviewer");
+  const add_reviewers = core.getInput("add_reviewers");
+  const add_team_reviewers = core.getInput("add_team_reviewers");
   const auto_merge_enabled = core.getInput("auto_merge_enabled");
   const auto_merge_method = core.getInput("auto_merge_method");
+  const comment_style = core.getInput("comment_style");
   const experimental = JSON.parse(core.getInput("experimental"));
   const source_pr_number = core.getInput("source_pr_number");
 
   if (cherry_picking !== "auto" && cherry_picking !== "pull_request_head") {
     const message = `Expected input 'cherry_picking' to be either 'auto' or 'pull_request_head', but was '${cherry_picking}'`;
+    console.error(message);
+    core.setFailed(message);
+    return;
+  }
+
+  const coercedCherryPickingMergeMode = coerceCherryPickingMergeMode(
+    cherry_picking_merge_mode,
+  );
+  if (coercedCherryPickingMergeMode === "invalid") {
+    const message = `Invalid value for \`cherry_picking_merge_mode\`: \`${cherry_picking_merge_mode}\`. Accepted values: \`default\`, \`whitespace_tolerant\`.`;
     console.error(message);
     core.setFailed(message);
     return;
@@ -57,6 +74,23 @@ async function run(): Promise<void> {
     auto_merge_method !== "rebase"
   ) {
     const message = `Expected input 'auto_merge_method' to be either 'merge', 'squash', or 'rebase', but was '${auto_merge_method}'`;
+    console.error(message);
+    core.setFailed(message);
+    return;
+  }
+
+  if (comment_style !== "legacy" && comment_style !== "summary") {
+    const message = `Expected input 'comment_style' to be either 'legacy' or 'summary', but was '${comment_style}'`;
+    console.error(message);
+    core.setFailed(message);
+    return;
+  }
+
+  if (
+    copy_requested_reviewers === "true" &&
+    add_author_as_reviewer === "true"
+  ) {
+    const message = `Expected only one of 'copy_requested_reviewers' and 'add_author_as_reviewer', to be enabled but both were'`;
     console.error(message);
     core.setFailed(message);
     return;
@@ -98,13 +132,34 @@ async function run(): Promise<void> {
       copy_labels_pattern === "" ? undefined : new RegExp(copy_labels_pattern),
     add_labels: add_labels === "" ? [] : add_labels.split(/[,]/),
     target_branches: target_branches === "" ? undefined : target_branches,
-    commits: { cherry_picking, merge_commits },
+    commits: {
+      cherry_picking,
+      cherry_picking_merge_mode: coercedCherryPickingMergeMode,
+      merge_commits,
+    },
     copy_assignees: copy_assignees === "true",
     copy_milestone: copy_milestone === "true",
+    copy_all_reviewers: copy_all_reviewers === "true",
     copy_requested_reviewers: copy_requested_reviewers === "true",
     add_author_as_assignee: add_author_as_assignee === "true",
+    add_author_as_reviewer: add_author_as_reviewer === "true",
+    add_reviewers:
+      add_reviewers === ""
+        ? []
+        : add_reviewers
+            .split(",")
+            .map((r) => r.trim())
+            .filter(Boolean),
+    add_team_reviewers:
+      add_team_reviewers === ""
+        ? []
+        : add_team_reviewers
+            .split(",")
+            .map((r) => r.trim())
+            .filter(Boolean),
     auto_merge_enabled: auto_merge_enabled === "true",
     auto_merge_method: auto_merge_method as "merge" | "squash" | "rebase",
+    comment_style: comment_style as "legacy" | "summary",
     experimental: { ...experimentalDefaults, ...experimental },
     source_pr_number:
       source_pr_number === "" ? undefined : parseInt(source_pr_number),

@@ -1,4 +1,4 @@
-import { PullRequest } from "./github";
+import { PullRequest } from "./github.js";
 
 /**
  * @param template The template potentially containing placeholders
@@ -39,17 +39,27 @@ const patterns = {
   // https://regex101.com/r/XKRl8q/5
   url: {
     global:
-      /(?:^| )(?:(?:https:\/\/)?(?:www\.)?github\.com\/(?<org>[^ \/\n]+)\/(?<repo>[^ \/\n]+)\/issues\/(?<number>[0-9]+)(?:\/)?)(?: |$)/gm,
+      /(?:^| )(?:(?:https:\/\/)?(?:www\.)?github\.com\/(?<org>[^ \/\n]+)\/(?<repo>[^ \/\n]+)\/issues\/(?<number>[1-9][0-9]*)(?:\/)?)(?: |$)/gm,
     first:
-      /(?:^| )(?:(?:https:\/\/)?(?:www\.)?github\.com\/(?<org>[^ \/\n]+)\/(?<repo>[^ \/\n]+)\/issues\/(?<number>[0-9]+)(?:\/)?)(?: |$)/m,
+      /(?:^| )(?:(?:https:\/\/)?(?:www\.)?github\.com\/(?<org>[^ \/\n]+)\/(?<repo>[^ \/\n]+)\/issues\/(?<number>[1-9][0-9]*)(?:\/)?)(?: |$)/m,
   },
 
   // matches `#123` at start, middle, end of line as individual word
   // may be lead and trailed by whitespace which should be trimmed
   // captures `number` of the issue (and optionally the `org` and `repo`)
   // https://regex101.com/r/2gAB8O/2
-  ref: /(?:^| )((?<org>[^\n #\/]+)\/(?<repo>[^\n #\/]+))?#(?<number>[0-9]+)(?: |$)/gm,
+  ref: /(?:^| )((?<org>[^\n #\/]+)\/(?<repo>[^\n #\/]+))?#(?<number>[1-9][0-9]*)(?: |$)/gm,
 };
+
+export function coerceCherryPickingMergeMode(
+  raw: string,
+): "default" | "whitespace_tolerant" | "invalid" {
+  const value = raw === "" ? "default" : raw;
+  if (value === "default" || value === "whitespace_tolerant") {
+    return value;
+  }
+  return "invalid";
+}
 
 const toRef = (url: string) => {
   // matchAll is not yet available to directly access the captured groups of all matches

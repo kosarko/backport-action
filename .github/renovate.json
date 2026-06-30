@@ -2,6 +2,13 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:best-practices",
+    "helpers:pinGitHubActionDigestsToSemver",
     ":semanticCommitsDisabled"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest", "lockFileMaintenance"],
+      "addLabels": ["automerge"]
+    }
   ]
 }
