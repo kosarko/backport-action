@@ -21,7 +21,7 @@ export type CommentContext = {
 };
 
 const ACTION_LINK =
-  "[Backport-action](https://github.com/korthout/backport-action)";
+  "[Backport-action](https://github.com/kosarko/backport-action)";
 
 /**
  * Renders the full progressive summary comment.
@@ -31,6 +31,10 @@ const ACTION_LINK =
  * @param context   run-id and run-url for the workflow run link
  * @param error     pre-loop failure message (e.g. PR not merged); when set,
  *                  `results` should be empty
+ * @param downstream `owner/repo` slug when backporting to a downstream repo;
+ *                  empty for in-repo backports. Qualifies PR references in the
+ *                  status table so they point at the downstream PR, not a
+ *                  same-numbered PR in the source repo.
  */
 export function formatRunComment(
   results: TargetResult[],
@@ -38,10 +42,11 @@ export function formatRunComment(
   context: CommentContext,
   error?: string,
   targetRemote: string = "origin",
+  downstream: string = "",
 ): string {
   const intro = formatIntroduction(results, pendingTargets, context, error);
   const errorBlock = error ? `\n\n${error}` : "";
-  const table = formatTable(results, pendingTargets);
+  const table = formatTable(results, pendingTargets, downstream);
   const detailsBlocks = results
     .filter(
       (r): r is Extract<TargetResult, { status: "failed" }> =>
@@ -108,12 +113,15 @@ export function formatNoTargetsComment(context: CommentContext): string {
 function formatTable(
   results: TargetResult[],
   pendingTargets: string[],
+  downstream: string = "",
 ): string {
   if (results.length === 0 && pendingTargets.length === 0) return "";
 
   const rows: string[] = [];
   for (const result of results) {
-    rows.push(`| \`${result.targetBranch}\` | ${formatStatusCell(result)} |`);
+    rows.push(
+      `| \`${result.targetBranch}\` | ${formatStatusCell(result, downstream)} |`,
+    );
   }
   for (const target of pendingTargets) {
     rows.push(`| \`${target}\` | :hourglass: Pending |`);
@@ -122,12 +130,15 @@ function formatTable(
   return ["| Target | Status |", "|--------|--------|", ...rows].join("\n");
 }
 
-function formatStatusCell(result: TargetResult): string {
+function formatStatusCell(
+  result: TargetResult,
+  downstream: string = "",
+): string {
   switch (result.status) {
     case "success":
-      return `:white_check_mark: Created #${result.newPrNumber}`;
+      return `:white_check_mark: Created ${downstream}#${result.newPrNumber}`;
     case "success_with_conflicts":
-      return `:warning: Drafted with conflicts #${result.newPrNumber}`;
+      return `:warning: Drafted with conflicts ${downstream}#${result.newPrNumber}`;
     case "skipped":
       return `:heavy_minus_sign: Skipped (${result.reason})`;
     case "failed":
@@ -235,7 +246,7 @@ export function formatSingleTargetComment(
     `:x: ${targetBranch} — unexpected failure`,
     dedent`An unexpected error occurred while backporting to \`${targetBranch}\`.
 
-           Please check the workflow run logs for the full error and stack trace, and consider reporting this as a bug at https://github.com/korthout/backport-action/issues.`,
+           Please check the workflow run logs for the full error and stack trace, and consider reporting this as a bug at https://github.com/kosarko/backport-action/issues.`,
   );
 }
 

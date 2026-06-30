@@ -13,7 +13,7 @@ Backporting cherry-picks PR commits to release branches.
 Since `dist/` differs across branches, including `dist/` in PRs causes merge conflicts during backporting.
 The Publish workflow builds and commits `dist/` separately after each merge, avoiding this.
 
-It is fine to temporarily include `dist/` in a PR branch for E2E testing (via [backport-action-test](https://github.com/korthout/backport-action-test)) or manual testing, but `dist/` changes should be removed before merging to support backporting the PR.
+It is fine to temporarily include `dist/` in a PR branch for E2E testing (via [backport-action-test](https://github.com/kosarko/backport-action-test)) or manual testing, but `dist/` changes should be removed before merging to support backporting the PR.
 
 ## Publish concurrency
 

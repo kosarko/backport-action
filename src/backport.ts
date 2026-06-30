@@ -326,6 +326,9 @@ export class Backport {
               commentCtx,
               undefined,
               this.getRemote(),
+              this.shouldUseDownstreamRepo()
+                ? `${targetOwner}/${targetRepo}`
+                : "",
             ),
           );
           if (result.status === "success_with_conflicts") {

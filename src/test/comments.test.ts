@@ -149,7 +149,7 @@ describe("formatSingleTargetComment", () => {
 
     expect(out).toContain("unexpected failure");
     expect(out).toContain("workflow run logs");
-    expect(out).toContain("github.com/korthout/backport-action/issues");
+    expect(out).toContain("github.com/kosarko/backport-action/issues");
   });
 });
 
@@ -170,6 +170,29 @@ describe("formatRunComment", () => {
     expect(out).toContain("| Target | Status |");
     expect(out).toContain(":white_check_mark: Created #123");
     expect(out).not.toContain("<details>");
+  });
+
+  it("downstream backport: status cell qualifies the PR ref with owner/repo", () => {
+    const results: TargetResult[] = [
+      {
+        status: "success",
+        targetBranch: "main",
+        newPrNumber: 123,
+        branchname: "backport-42-to-main",
+      },
+    ];
+    const out = formatRunComment(
+      results,
+      [],
+      context,
+      undefined,
+      "downstream",
+      "upstream-owner/upstream-repo",
+    );
+
+    expect(out).toContain(
+      ":white_check_mark: Created upstream-owner/upstream-repo#123",
+    );
   });
 
   it("multiple failed targets: one details block per failure, in table order", () => {
@@ -413,7 +436,7 @@ describe("formatNoTargetsComment", () => {
     const out = formatNoTargetsComment(context);
 
     expect(out).toContain(
-      `[Backport-action](https://github.com/korthout/backport-action) found no target branches to backport this pull request to in [workflow run ${context.runId}](${context.runUrl}).`,
+      `[Backport-action](https://github.com/kosarko/backport-action) found no target branches to backport this pull request to in [workflow run ${context.runId}](${context.runUrl}).`,
     );
   });
 

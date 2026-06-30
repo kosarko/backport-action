@@ -29,7 +29,7 @@ Integration tests (still fast, specific focus)
 └── git.integration.test.ts       — real-git tests using FakeGithub + Real Git
 
 E2E tests (separate repository)
-└── korthout/backport-action-test  — real GitHub Actions + real GitHub API
+└── kosarko/backport-action-test  — real GitHub Actions + real GitHub API
 ```
 
 The tests in this repo are written like this:
@@ -42,7 +42,7 @@ That means that most tests will either be unit tests or fast running integration
 
 The codebase has two external boundaries: `GithubApi` and `GitApi`. The integration tests mock/fake one or more of these boundaries. For example, `git.integration.test.ts` uses `FakeGithub` (a fake `GithubApi`) so it can test against a real Git repo. This gives fast orchestration tests AND realistic git tests without needing a real GitHub API.
 
-E2E tests in [korthout/backport-action-test](https://github.com/korthout/backport-action-test) complete the strategy by exercising the action on real GitHub PRs against the real GitHub API and workflow triggers.
+E2E tests in [kosarko/backport-action-test](https://github.com/kosarko/backport-action-test) complete the strategy by exercising the action on real GitHub PRs against the real GitHub API and workflow triggers.
 
 ## Where to add your test
 
@@ -70,7 +70,7 @@ Each integration test file also has a header comment with additional guidance.
 
 ## E2E tests
 
-E2E tests live in a separate repository: [korthout/backport-action-test](https://github.com/korthout/backport-action-test). They cover different trigger events, merge strategies (merge/squash/rebase), and fork vs local PRs.
+E2E tests live in a separate repository: [kosarko/backport-action-test](https://github.com/kosarko/backport-action-test). They cover different trigger events, merge strategies (merge/squash/rebase), and fork vs local PRs.
 
 These run the action on real GitHub PRs and are slow and manual — run them via workflow dispatch in that repository. Run before releasing, or when changing how the action interacts with GitHub (merge strategy detection, commit discovery, `main.ts` entry point, workflow trigger handling).
 

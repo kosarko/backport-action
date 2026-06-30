@@ -148,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Create backport pull requests
-        uses: korthout/backport-action@v4
+        uses: kosarko/backport-action@v4
         with:
           target_branches: ${{ needs.determine-target-branch.outputs.branch }}
 ```
@@ -434,6 +434,15 @@ This allows you to automatically create backport pull requests to upstream repos
 This configuration will create backport PRs from your fork to the specified upstream repository.
 
 By default, uses the owner of the repository in which the workflow runs.
+
+### Authentication for cross-fork PRs
+
+The default `${{ github.token }}` can push the backport branch to your fork, but it
+**cannot open a pull request against a downstream repository you don't own**. Provide a
+token that can, via the `github_token` input:
+
+- Install the [**port-pr** GitHub App](https://github.com/apps/port-pr) and pass its token, or
+- Use a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with permission to open PRs on the downstream repo.
 
 ### `github_token`
 
